@@ -1,0 +1,76 @@
+import java.io.*;
+import java.net.*;
+import java.nio.charset.StandardCharsets;
+
+public class Server1 {
+    // 문제와 정답 배열
+    private static final String[][] quiz = {
+        {"링크를 통한 데이터 전송 단위는?", "packet"},
+        {"동영상 재생을 할 때 사용하는 통신 방법은?", "UDP"},
+        {"내 이름은?", "namyoung"},
+        {"네트워크는 --구조로 이루어져있다.", "layer"},
+        {"소켓 프로그래밍에서 서버는 연결된 소켓으로 데이터를 주고받는다 O/X", "X"}
+    };
+
+    public static void main(String[] args) {
+        int port = 12345; // 기본 포트
+
+        try (ServerSocket serverSocket = new ServerSocket(port)) {
+            System.out.println("서버가 실행되었습니다. 클라이언트를 기다리는 중...");
+
+            // 서버 정보 저장
+            try (PrintWriter writer = new PrintWriter(new FileWriter("server_info.dat"))) {
+                writer.println("127.0.0.1"); // 서버 IP (localhost)
+                writer.println(port);       // 서버 포트
+                System.out.println("서버 정보가 server_info.dat에 저장되었습니다.");
+            } catch (IOException e) {
+                System.out.println("server_info.dat 파일 저장 중 오류: " + e.getMessage());
+            }
+
+            while (true) {
+                try (Socket clientSocket = serverSocket.accept();
+                     InputStream input = clientSocket.getInputStream();
+                     OutputStream output = clientSocket.getOutputStream();
+                     BufferedReader in = new BufferedReader(new InputStreamReader(input, StandardCharsets.UTF_8));
+                     PrintWriter out = new PrintWriter(new OutputStreamWriter(output, StandardCharsets.UTF_8), true)) {
+
+                    System.out.println("클라이언트가 연결되었습니다.");
+                    int index = 0; // 문제 번호 초기화
+                    int score = 0; // 점수 초기화
+
+                    while (index < quiz.length) {
+                        // 문제 전송
+                        out.println("문제: " + quiz[index][0]);
+
+                        // 클라이언트 답변 수신
+                        String answer = in.readLine();
+                        if (answer == null) {
+                            System.out.println("클라이언트 연결이 종료되었습니다.");
+                            break;
+                        }
+
+                        answer = answer.trim(); // 공백 제거
+
+                        // 정답 확인
+                        if (quiz[index][1].equalsIgnoreCase(answer)) {
+                            score++; // 정답일 경우 점수 추가
+                            index++; // 다음 문제로 이동
+                            out.println("정답입니다! 다음 문제로 넘어갑니다.");
+                        } else {
+                            out.println("틀렸습니다. 다시 시도하세요.");
+                        }
+                    }
+
+                    // 모든 문제를 푼 후 최종 점수 출력
+                    if (index == quiz.length) {
+                        out.println("모든 문제를 맞췄습니다! 최종 점수: " + score + "점");
+                    }
+                } catch (IOException e) {
+                    System.out.println("클라이언트 연결 중 오류 발생: " + e.getMessage());
+                }
+            }
+        } catch (IOException e) {
+            System.out.println("서버 소켓 생성 실패: " + e.getMessage());
+        }
+    }
+}
